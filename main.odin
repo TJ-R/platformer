@@ -93,7 +93,7 @@ main :: proc() {
 	// This will do for now but for readability sake might be better to do something
 	// different
 	// Need to read more about GLSL
-	shaderCodeSource :=
+	vertexShaderCodeSource :=
 		`#version 330 core
 layout (location = 0) in vec3 aPos;
 void main()
@@ -102,7 +102,7 @@ void main()
 }` +
 		"\x00"
 
-	vertexShaderSource: cstring = cstring(raw_data(shaderCodeSource))
+	vertexShaderSource: cstring = cstring(raw_data(vertexShaderCodeSource))
 
 	/* ----------------- SHADER COMPILATION --------------------- */
 	// define a shader object based on what the type of shader
@@ -121,17 +121,71 @@ void main()
 	gl.GetShaderiv(vertexShader, gl.COMPILE_STATUS, &success)
 
 	// If shader failed taking a guess that 0 is false since success is i32
-	if (success != 0) {
+	if (success == i32(gl.FALSE)) {
 		gl.GetShaderInfoLog(vertexShader, 512, nil, raw_data(infoLog[:]))
 
 		// Find num bytes before terminal
 		bytes_read, _ := os.read(os.stdin, infoLog[:])
 		err_msg := string(infoLog[0:bytes_read])
 		fmt.eprintf("ERROR::SHADER::VERTEX::COMPILATION_FAILED %s\n", err_msg)
+		return
 	}
 
 	/* ------------------- FRAGMENT SHADER ----------------- */
 
+	fragmentShaderCodeSource :=
+		`#version 330 core
+out vec4 FragColor;
+void main()
+{
+	FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+}` +
+		"\x00"
+
+	fragmentShaderSource: cstring = cstring(raw_data(fragmentShaderCodeSource))
+	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
+	gl.ShaderSource(fragmentShader, 1, &fragmentShaderSource, nil)
+	gl.CompileShader(fragmentShader)
+
+	gl.GetShaderiv(fragmentShader, gl.COMPILE_STATUS, &success)
+
+	if (success == i32(gl.FALSE)) {
+		gl.GetShaderInfoLog(fragmentShader, 512, nil, raw_data(infoLog[:]))
+
+		bytes_read, _ := os.read(os.stdin, infoLog[:])
+		err_msg := string(infoLog[0:bytes_read])
+		fmt.eprintf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED %s\n", err_msg)
+		return
+	}
+
+	/* --------------- SHADER PROGRAM ------------------- */
+	// Need to linked the compiled shaders to a shader program
+	// Then activate the program for rendering so they are used
+	// to render our objects
+
+	// Returns id to new program
+	shaderProgram := gl.CreateProgram()
+
+	gl.AttachShader(shaderProgram, vertexShader)
+	gl.AttachShader(shaderProgram, fragmentShader)
+	gl.LinkProgram(shaderProgram)
+
+	gl.GetProgramiv(shaderProgram, gl.LINK_STATUS, &success)
+
+	if (success == i32(gl.FALSE)) {
+		gl.GetProgramInfoLog(shaderProgram, 512, nil, raw_data(infoLog[:]))
+
+		bytes_read, _ := os.read(os.stdin, infoLog[:])
+		err_msg := string(infoLog[0:bytes_read])
+		fmt.eprintf("ERROR::PROGRAM::SHADER::LINKING_FAILED %s\n", err_msg)
+		return
+	}
+
+	gl.UseProgram(shaderProgram)
+
+	// Don't need this objects any more since they are linked to the program
+	gl.DeleteShader(vertexShader)
+	gl.DeleteShader(fragmentShader)
 
 	running := true
 	for running {
