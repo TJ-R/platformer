@@ -1,8 +1,9 @@
 package main
 
 import "core:fmt"
-import sdl "vendor:sdl3"
+import "core:os"
 import gl "vendor:OpenGL"
+import sdl "vendor:sdl3"
 
 /*
 * Really long breakdown of my understanding of how this seems to work
@@ -13,8 +14,7 @@ import gl "vendor:OpenGL"
 * 
 * Anyways the rendering pipeline has two buffers a front and a back
 * The front is what you see and the back is creating the next frame
-* SwapWindow while passing the back buffer (window) will display next frame.
-* I am assuming it sets the front buffer to the back buffer or dumps the back
+* SwapWindow while passing the back buffer (window) will display next frame. I am assuming it sets the front buffer to the back buffer or dumps the back
 * buffer into the front buffer. Then clears the new back buffer or is empty
 * as a result of the dump.
 *
@@ -26,68 +26,132 @@ import gl "vendor:OpenGL"
 */
 
 main :: proc() {
-    if !sdl.Init({.VIDEO}) {
-        fmt.eprintln("Failed to initialize SDL:", sdl.GetError())
-        return
-    }
+	if !sdl.Init({.VIDEO}) {
+		fmt.eprintln("Failed to initialize SDL:", sdl.GetError())
+		return
+	}
 
-    fmt.println("[Debug] Video Initialized")
+	fmt.println("[Debug] Video Initialized")
 
-    // Setting the OpenGL setting the version and match
-    // not 100% guarentteed that I get it but will need
-    // to check afterwards
-    sdl.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, 3)
-    sdl.GL_SetAttribute(.CONTEXT_MINOR_VERSION, 3)
-    sdl.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl.GL_CONTEXT_PROFILE_CORE))
-    
-    window := sdl.CreateWindow("Test", 1280, 720, {.OPENGL})
-    if window == nil {
-        fmt.eprintln("Failed to create window:", sdl.GetError())
-        return
-    }
-    defer sdl.DestroyWindow(window)
+	// Setting the OpenGL setting the version and match
+	// not 100% guarentteed that I get it but will need
+	// to check afterwards
+	sdl.GL_SetAttribute(.CONTEXT_MAJOR_VERSION, 3)
+	sdl.GL_SetAttribute(.CONTEXT_MINOR_VERSION, 3)
+	sdl.GL_SetAttribute(.CONTEXT_PROFILE_MASK, i32(sdl.GL_CONTEXT_PROFILE_CORE))
 
-    fmt.println("[Debug] Window Initialized")
+	window := sdl.CreateWindow("Test", 1280, 720, {.OPENGL})
+	if window == nil {
+		fmt.eprintln("Failed to create window:", sdl.GetError())
+		return
+	}
+	defer sdl.DestroyWindow(window)
 
-    // Creating the ctx for OpenGL based on SDL's window
-    ctx := sdl.GL_CreateContext(window)
-    if ctx == nil {
-        fmt.eprintln("Failed to create ctx:", sdl.GetError())
-        return
-    }
-    defer sdl.GL_DestroyContext(ctx)
+	fmt.println("[Debug] Window Initialized")
 
-    fmt.println("[Debug] Context Created")
+	// Creating the ctx for OpenGL based on SDL's window
+	ctx := sdl.GL_CreateContext(window)
+	if ctx == nil {
+		fmt.eprintln("Failed to create ctx:", sdl.GetError())
+		return
+	}
+	defer sdl.GL_DestroyContext(ctx)
 
-    sdl.GL_MakeCurrent(window, ctx)
+	fmt.println("[Debug] Context Created")
 
-    // Have to load the proc address to call gl funcdtions
-    gl.load_up_to(3, 3, sdl.gl_set_proc_address)
+	sdl.GL_MakeCurrent(window, ctx)
 
-    gl.Viewport(0, 0, 1280, 720)
+	// Have to load the proc address to call gl funcdtions
+	gl.load_up_to(3, 3, sdl.gl_set_proc_address)
 
-    running := true
-    for running {
-        event: sdl.Event
-        for sdl.PollEvent(&event) {
-            #partial switch event.type {
-                case .QUIT:
-                    running = false
-                    break
-                case .WINDOW_RESIZED:
-                    gl.Viewport(0, 0, event.window.data1, event.window.data2)
-            }
-        }
+	gl.Viewport(0, 0, 1280, 720)
 
-        // Sets the color of the screen durning the clear screen
-        gl.ClearColor(0, 0, 0, 1)
+	vertices := []f16{-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0}
 
-        // Clears the screen using the Clear Color
-        gl.Clear(gl.COLOR_BUFFER_BIT)
 
-        fmt.println("[DEBUG] Swapping Buffers")
-        sdl.GL_SwapWindow(window)
-    }
+	/*---------------- VERTEX INPUT ----------------------------- */
 
-    sdl.Quit()
+	// Defining Vertex Buffer Object
+	// Assigning the unique id to the VBO variable via GenBuffers function
+	// call
+	VBO: u32
+	gl.GenBuffers(1, &VBO)
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
+
+	// Feeding data in whatever buffer is currently plugged in to the ARRAY_BUFFER
+	// via bind buffer. STATIC_DRAW sets the data once and is used many times
+	// Other types
+	// STREAM_DRAW if that data is set once and only used a few times
+	// DYNAMIC_DRAW data changes a lot and used a lot
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), raw_data(vertices), gl.STATIC_DRAW)
+
+	/* -------------------- VERTEX SHADER ------------------------ */
+	// Need to write in GLSL OpenGL Shading Language
+	// Might want to write this in a separte shader.vert file
+	// and load it on compile time
+
+	// This will do for now but for readability sake might be better to do something
+	// different
+	// Need to read more about GLSL
+	shaderCodeSource :=
+		`#version 330 core
+layout (location = 0) in vec3 aPos;
+void main()
+{
+	gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+}` +
+		"\x00"
+
+	vertexShaderSource: cstring = cstring(raw_data(shaderCodeSource))
+
+	/* ----------------- SHADER COMPILATION --------------------- */
+	// define a shader object based on what the type of shader
+	// we want it to be at run time
+	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
+
+	// pass the shader, the number of strings in the array, array of pointers
+	// to strings (in my case it is just one string no array), array of all
+	// of the string lengths that the pointers are pointing to
+	gl.ShaderSource(vertexShader, 1, &vertexShaderSource, nil)
+	gl.CompileShader(vertexShader)
+
+	success: i32
+	infoLog: [512]u8 // Remember char is just 8-bit unsigned int
+
+	gl.GetShaderiv(vertexShader, gl.COMPILE_STATUS, &success)
+
+	// If shader failed taking a guess that 0 is false since success is i32
+	if (success != 0) {
+		gl.GetShaderInfoLog(vertexShader, 512, nil, raw_data(infoLog[:]))
+
+		// Find num bytes before terminal
+		bytes_read, _ := os.read(os.stdin, infoLog[:])
+		err_msg := string(infoLog[0:bytes_read])
+		fmt.eprintf("ERROR::SHADER::VERTEX::COMPILATION_FAILED %s\n", err_msg)
+	}
+
+	/* ------------------- FRAGMENT SHADER ----------------- */
+
+
+	running := true
+	for running {
+		event: sdl.Event
+		for sdl.PollEvent(&event) {
+			#partial switch event.type {
+			case .QUIT:
+				running = false
+				break
+			case .WINDOW_RESIZED:
+				gl.Viewport(0, 0, event.window.data1, event.window.data2)
+			}
+		}
+
+		// Sets the color of the screen durning the clear screen
+		gl.ClearColor(0, 0, 0, 1)
+		// Clears the screen using the Clear Color
+		gl.Clear(gl.COLOR_BUFFER_BIT)
+		sdl.GL_SwapWindow(window)
+	}
+
+	sdl.Quit()
 }
