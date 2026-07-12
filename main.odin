@@ -65,51 +65,19 @@ main :: proc() {
 	gl.Viewport(0, 0, 1280, 720)
 
 	/* ----------------- SHADER INIT ---------------- */
-	vertexShaderCodeSource := #load("./shaders/shader.vert")
-	fragmentShaderCodeSource := #load("./shaders/shader.frag")
+	vertexShaderSource := #load("./shaders/shader.vert")
+	fragmentShaderSource := #load("./shaders/shader.frag")
 
-	/* ----------------- SHADER COMPILATION --------------------- */
-	// define a shader object based on what the type of shader
-	// we want it to be at run time
-
-	vertexShaderSource: cstring = cstring(raw_data(vertexShaderCodeSource))
-	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
-
-	// pass the shader, the number of strings in the array, array of pointers
-	// to strings (in my case it is just one string no array), array of all
-	// of the string lengths that the pointers are pointing to
-	gl.ShaderSource(vertexShader, 1, &vertexShaderSource, nil)
-	gl.CompileShader(vertexShader)
-
-	success: i32
-	infoLog: [512]u8 // Remember char is just 8-bit unsigned int
-	logLength: i32
-
-	gl.GetShaderiv(vertexShader, gl.COMPILE_STATUS, &success)
-
-	// If shader failed taking a guess that 0 is false since success is i32
+	vertexShader, success, err_msg := compile_shader(vertexShaderSource, gl.VERTEX_SHADER)
 	if (success == i32(gl.FALSE)) {
-		gl.GetShaderInfoLog(vertexShader, 512, &logLength, raw_data(infoLog[:]))
-		// Find num bytes before terminal
-		err_msg := string(infoLog[:logLength])
 		fmt.eprintf("ERROR::SHADER::VERTEX::COMPILATION_FAILED %s\n", err_msg)
 		return
 	}
 	fmt.println("[DEBUG] Vertex Shader Compilation Done")
 
-	/* ------------------- FRAGMENT SHADER ----------------- */
-
-
-	fragmentShaderSource: cstring = cstring(raw_data(fragmentShaderCodeSource))
-	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
-	gl.ShaderSource(fragmentShader, 1, &fragmentShaderSource, nil)
-	gl.CompileShader(fragmentShader)
-
-	gl.GetShaderiv(fragmentShader, gl.COMPILE_STATUS, &success)
-
+	fragmentShader: u32 // declaring framentShader
+	fragmentShader, success, err_msg = compile_shader(fragmentShaderSource, gl.FRAGMENT_SHADER)
 	if (success == i32(gl.FALSE)) {
-		gl.GetShaderInfoLog(fragmentShader, 512, &logLength, raw_data(infoLog[:]))
-		err_msg := string(infoLog[:logLength])
 		fmt.eprintf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED %s\n", err_msg)
 		return
 	}
@@ -119,28 +87,8 @@ main :: proc() {
 	// Need to linked the compiled shaders to a shader program
 	// Then activate the program for rendering so they are used
 	// to render our objects
-
-	// Returns id to new program
-	shaderProgram := gl.CreateProgram()
-
-	gl.AttachShader(shaderProgram, vertexShader)
-	gl.AttachShader(shaderProgram, fragmentShader)
-	gl.LinkProgram(shaderProgram)
-
-	gl.GetProgramiv(shaderProgram, gl.LINK_STATUS, &success)
-
-	if (success == i32(gl.FALSE)) {
-		gl.GetProgramInfoLog(shaderProgram, 512, &logLength, raw_data(infoLog[:]))
-
-		err_msg := string(infoLog[:logLength])
-		fmt.eprintf("ERROR::PROGRAM::SHADER::LINKING_FAILED %s\n", err_msg)
-		return
-	}
-	fmt.println("[DEBUG] Program Shader Linking Done")
-	// Don't need this objects any more since they are linked to the program
-	gl.DeleteShader(vertexShader)
-	gl.DeleteShader(fragmentShader)
-
+	shaderProgram: u32
+	shaderProgram, success = create_shader_program({vertexShader, fragmentShader})
 
 	/* ---------------- VERTEX DATA INIT ---------------- */
 
@@ -209,4 +157,63 @@ main :: proc() {
 
 	sdl.Quit()
 	return
+}
+
+compile_shader :: proc(src: []byte, shaderType: u32) -> (u32, i32, string) {
+	cstr: cstring = cstring(raw_data(src))
+	shader := gl.CreateShader(shaderType)
+
+	// pass the shader, the number of strings in the array, array of pointers
+	// to strings (in my case it is just one string no array), array of all
+	// of the string lengths that the pointers are pointing to
+	// PROBABLY SHOULD CHANGE NIL TO LENGTH SINCE THIS PROCEDURE (FUNCTION)
+	// IS SUPPOSED TO HANDLE COMPILING ALL KINDS OF DIFFERENT SHADERS
+	gl.ShaderSource(shader, 1, &cstr, nil)
+	gl.CompileShader(shader)
+
+	success: i32
+	infoLog: [512]u8 // Remember char is just 8-bit unsigned int
+	logLength: i32
+
+	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success)
+
+	// If shader failed taking a guess that 0 is false since success is i32
+	if (success == i32(gl.FALSE)) {
+		gl.GetShaderInfoLog(shader, 512, &logLength, raw_data(infoLog[:]))
+		// Find num bytes before terminal
+		err_msg := string(infoLog[:logLength])
+		return shader, success, err_msg
+	}
+
+	return shader, success, ""
+}
+
+create_shader_program :: proc(shaders: []u32) -> (u32, i32) {
+	shaderProgram := gl.CreateProgram()
+
+	for shader in shaders {
+		gl.AttachShader(shaderProgram, shader)
+	}
+
+	gl.LinkProgram(shaderProgram)
+
+	success: i32
+	infoLog: [512]u8 // Remember char is just 8-bit unsigned int
+	logLength: i32
+	gl.GetProgramiv(shaderProgram, gl.LINK_STATUS, &success)
+
+	if (success == i32(gl.FALSE)) {
+		gl.GetProgramInfoLog(shaderProgram, 512, &logLength, raw_data(infoLog[:]))
+
+		err_msg := string(infoLog[:logLength])
+		fmt.eprintf("ERROR::PROGRAM::SHADER::LINKING_FAILED %s\n", err_msg)
+		return shaderProgram, i32(gl.FALSE)
+	}
+	fmt.println("[DEBUG] Program Shader Linking Done")
+	// Don't need this objects any more since they are linked to the program
+	for shader in shaders {
+		gl.DeleteShader(shader)
+	}
+
+	return shaderProgram, i32(gl.TRUE)
 }
