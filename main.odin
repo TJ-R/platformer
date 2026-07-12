@@ -63,36 +63,9 @@ main :: proc() {
 
 	// Have to load the proc address to call gl funcdtions
 	gl.load_up_to(3, 3, sdl.gl_set_proc_address)
-
 	gl.Viewport(0, 0, 1280, 720)
 
-	vertices := []f32{-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0}
-
-
-	/*---------------- VERTEX INPUT ----------------------------- */
-
-	// Defining Vertex Buffer Object
-	// Assigning the unique id to the VBO variable via GenBuffers function
-	// call
-	VBO: u32
-	gl.GenBuffers(1, &VBO)
-	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
-
-	// Feeding data in whatever buffer is currently plugged in to the ARRAY_BUFFER
-	// via bind buffer. STATIC_DRAW sets the data once and is used many times
-	// Other types
-	// STREAM_DRAW if that data is set once and only used a few times
-	// DYNAMIC_DRAW data changes a lot and used a lot
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), raw_data(vertices), gl.STATIC_DRAW)
-
-	/* -------------------- VERTEX SHADER ------------------------ */
-	// Need to write in GLSL OpenGL Shading Language
-	// Might want to write this in a separte shader.vert file
-	// and load it on compile time
-
-	// This will do for now but for readability sake might be better to do something
-	// different
-	// Need to read more about GLSL
+	/* ----------------- SHADER INIT ---------------- */
 	vertexShaderCodeSource :=
 		`#version 330 core
 layout (location = 0) in vec3 aPos;
@@ -180,62 +153,22 @@ void main()
 		fmt.eprintf("ERROR::PROGRAM::SHADER::LINKING_FAILED %s\n", err_msg)
 		return
 	}
-
-	gl.UseProgram(shaderProgram)
-
 	// Don't need this objects any more since they are linked to the program
 	gl.DeleteShader(vertexShader)
 	gl.DeleteShader(fragmentShader)
 
-	/* ---------------- LINKING VERTEX ATTRIBUTES ---------------- */
-	// First Argument: Specified the location of the postition vertex attribute at 0 in
-	// in the vertex shader.
-	// Second Argument: Vec3 so has 3 values
-	// Third Argument is type which is f32 as vec* in GLSL is floats
-	// Fourth Argument don't need it normalized since we are using float 0 through 1
-	// Fifth Argument is the size of each vertex "stride" 3 * sizeof(float)
-	// Sixth is the offset void * which in odin uintptr
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), uintptr(0))
 
-	// NOTES ON ABOVE each vertex attributes take its data from the memory managed
-	// by a VBO (can have multiple). The VBO it takes from is whatever VBO is bound
-	// to the gl.ARRAY_BUFFER at the time.
-	// I.e. since out original VBO should be still bound vertex attribute 0
-	// the pointer we created about should associated with our VBO that we had
-	// bound (socketed)
+	/* ---------------- VERTEX DATA INIT ---------------- */
 
-	// This is the rough drawing process in order assuming the shader
-	// program was built ahead of time
-	/* 
-		// 1. copy vertices array to buffer for openGL
-		gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
-		gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), vertices, gl.STATIC_DRAW)
+	vertices := []f32{-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0}
 
-		// 2. set the vertex attribute pointers
-		gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), uintptr(0))
+	/*---------------- VERTEX INPUT ----------------------------- */
 
-		// 3. use the shaderProgram to render the object
-		gl.UseProgram(shaderProgram)
+	// Defining Vertex Buffer Object
+	// Assigning the unique id to the VBO variable via GenBuffers function
+	// call
+	VBO, VAO: u32
 
-		// 4. Draw the object
-		// someOpenGLProgramToDraw
-	*/
-
-	/* ------------------ Vertex Array Object --------------------- */
-	// Expanding on the above
-	// We need to setup a VAO much like a VBO earlier since OpenGL will refuse
-	// to draw without a VAO.
-	// VAO can be bound like any vertex buffer and stores the vertex attribute
-	// pointer calls so those calls only need to be made once and if we
-	// want to use them we just bind the VAO or swap it for another one that
-	// had a different set of pointer bound. REMEMBER STATE MACHINE
-
-	// Going to redo some of the stuff above since the order changes with this
-	// knowledge VAO bind frist then bind VBO then set Attribute Pointer and enable
-	// it
-
-	// PRETTY much 1-3 is initialization
-	VAO: u32
 	gl.GenVertexArrays(1, &VAO)
 
 	// 1. Bind VAO
@@ -249,9 +182,11 @@ void main()
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), uintptr(0))
 	gl.EnableVertexAttribArray(0)
 
-	// 4. Draw - NON-INITIALIZATION STEP choose shader program and VAO to draw
-	// Moved to inside of the for loop
+	// Unbinding from ARRAY_BUFFER can do this since VAO is already tracking
+	// the BO
+	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 
+	// could unbind the VAO but don't gl.BindVertexArray(0)
 
 	running := true
 	for running {
@@ -282,6 +217,7 @@ void main()
 		// gl.BindVertexArray(0) // could unbind it every time
 
 		sdl.GL_SwapWindow(window)
+
 	}
 
 	// Clean up
