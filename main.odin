@@ -95,16 +95,15 @@ void main()
 
 	success: i32
 	infoLog: [512]u8 // Remember char is just 8-bit unsigned int
+	logLength: i32
 
 	gl.GetShaderiv(vertexShader, gl.COMPILE_STATUS, &success)
 
 	// If shader failed taking a guess that 0 is false since success is i32
 	if (success == i32(gl.FALSE)) {
-		gl.GetShaderInfoLog(vertexShader, 512, nil, raw_data(infoLog[:]))
-
+		gl.GetShaderInfoLog(vertexShader, 512, &logLength, raw_data(infoLog[:]))
 		// Find num bytes before terminal
-		bytes_read, _ := os.read(os.stdin, infoLog[:])
-		err_msg := string(infoLog[0:bytes_read])
+		err_msg := string(infoLog[:logLength])
 		fmt.eprintf("ERROR::SHADER::VERTEX::COMPILATION_FAILED %s\n", err_msg)
 		return
 	}
@@ -121,10 +120,8 @@ void main()
 	gl.GetShaderiv(fragmentShader, gl.COMPILE_STATUS, &success)
 
 	if (success == i32(gl.FALSE)) {
-		gl.GetShaderInfoLog(fragmentShader, 512, nil, raw_data(infoLog[:]))
-
-		bytes_read, _ := os.read(os.stdin, infoLog[:])
-		err_msg := string(infoLog[0:bytes_read])
+		gl.GetShaderInfoLog(fragmentShader, 512, &logLength, raw_data(infoLog[:]))
+		err_msg := string(infoLog[:logLength])
 		fmt.eprintf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED %s\n", err_msg)
 		return
 	}
@@ -145,10 +142,9 @@ void main()
 	gl.GetProgramiv(shaderProgram, gl.LINK_STATUS, &success)
 
 	if (success == i32(gl.FALSE)) {
-		gl.GetProgramInfoLog(shaderProgram, 512, nil, raw_data(infoLog[:]))
+		gl.GetProgramInfoLog(shaderProgram, 512, &logLength, raw_data(infoLog[:]))
 
-		bytes_read, _ := os.read(os.stdin, infoLog[:])
-		err_msg := string(infoLog[0:bytes_read])
+		err_msg := string(infoLog[:logLength])
 		fmt.eprintf("ERROR::PROGRAM::SHADER::LINKING_FAILED %s\n", err_msg)
 		return
 	}
@@ -161,8 +157,6 @@ void main()
 	/* ---------------- VERTEX DATA INIT ---------------- */
 
 	vertices := [9]f32{-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0}
-
-	/*---------------- VERTEX INPUT ----------------------------- */
 
 	// Defining Vertex Buffer Object
 	// Assigning the unique id to the VBO variable via GenBuffers function
