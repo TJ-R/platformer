@@ -1,7 +1,6 @@
 package main
 
 import "core:fmt"
-import "core:os"
 import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
 
@@ -66,19 +65,8 @@ main :: proc() {
 	gl.Viewport(0, 0, 1280, 720)
 
 	/* ----------------- SHADER INIT ---------------- */
-	vertexShaderCodeSource := `#version 330 core
-layout (location = 0) in vec3 aPos;
-void main()
-{
-	gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-}`
-
-	fragmentShaderCodeSource := `#version 330 core
-out vec4 FragColor;
-void main()
-{
-	FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
-}`
+	vertexShaderCodeSource := #load("./shaders/shader.vert")
+	fragmentShaderCodeSource := #load("./shaders/shader.frag")
 
 	/* ----------------- SHADER COMPILATION --------------------- */
 	// define a shader object based on what the type of shader
