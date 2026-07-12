@@ -66,20 +66,25 @@ main :: proc() {
 	gl.Viewport(0, 0, 1280, 720)
 
 	/* ----------------- SHADER INIT ---------------- */
-	vertexShaderCodeSource :=
-		`#version 330 core
+	vertexShaderCodeSource := `#version 330 core
 layout (location = 0) in vec3 aPos;
 void main()
 {
 	gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
-}` +
-		"\x00"
+}`
 
-	vertexShaderSource: cstring = cstring(raw_data(vertexShaderCodeSource))
+	fragmentShaderCodeSource := `#version 330 core
+out vec4 FragColor;
+void main()
+{
+	FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+}`
 
 	/* ----------------- SHADER COMPILATION --------------------- */
 	// define a shader object based on what the type of shader
 	// we want it to be at run time
+
+	vertexShaderSource: cstring = cstring(raw_data(vertexShaderCodeSource))
 	vertexShader := gl.CreateShader(gl.VERTEX_SHADER)
 
 	// pass the shader, the number of strings in the array, array of pointers
@@ -103,17 +108,10 @@ void main()
 		fmt.eprintf("ERROR::SHADER::VERTEX::COMPILATION_FAILED %s\n", err_msg)
 		return
 	}
+	fmt.println("[DEBUG] Vertex Shader Compilation Done")
 
 	/* ------------------- FRAGMENT SHADER ----------------- */
 
-	fragmentShaderCodeSource :=
-		`#version 330 core
-out vec4 FragColor;
-void main()
-{
-	FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
-}` +
-		"\x00"
 
 	fragmentShaderSource: cstring = cstring(raw_data(fragmentShaderCodeSource))
 	fragmentShader := gl.CreateShader(gl.FRAGMENT_SHADER)
@@ -130,6 +128,7 @@ void main()
 		fmt.eprintf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED %s\n", err_msg)
 		return
 	}
+	fmt.println("[DEBUG] Fragment Shader Compilation Done")
 
 	/* --------------- SHADER PROGRAM ------------------- */
 	// Need to linked the compiled shaders to a shader program
@@ -153,6 +152,7 @@ void main()
 		fmt.eprintf("ERROR::PROGRAM::SHADER::LINKING_FAILED %s\n", err_msg)
 		return
 	}
+	fmt.println("[DEBUG] Program Shader Linking Done")
 	// Don't need this objects any more since they are linked to the program
 	gl.DeleteShader(vertexShader)
 	gl.DeleteShader(fragmentShader)
@@ -160,7 +160,7 @@ void main()
 
 	/* ---------------- VERTEX DATA INIT ---------------- */
 
-	vertices := []f32{-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0}
+	vertices := [9]f32{-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0}
 
 	/*---------------- VERTEX INPUT ----------------------------- */
 
@@ -168,15 +168,15 @@ void main()
 	// Assigning the unique id to the VBO variable via GenBuffers function
 	// call
 	VBO, VAO: u32
-
 	gl.GenVertexArrays(1, &VAO)
+	gl.GenBuffers(1, &VBO)
 
 	// 1. Bind VAO
 	gl.BindVertexArray(VAO)
 
 	// 2. Copy and Bind VBO
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), raw_data(vertices), gl.STATIC_DRAW)
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), raw_data(vertices[:]), gl.STATIC_DRAW)
 
 	// 3. Set Vertext Attribute Pointer
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), uintptr(0))
@@ -185,8 +185,8 @@ void main()
 	// Unbinding from ARRAY_BUFFER can do this since VAO is already tracking
 	// the BO
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-
 	// could unbind the VAO but don't gl.BindVertexArray(0)
+	fmt.println("[DEBUG] All VAO and VBO init and binding done")
 
 	running := true
 	for running {
@@ -202,7 +202,7 @@ void main()
 		}
 
 		// Sets the color of the screen durning the clear screen
-		gl.ClearColor(0, 0, 0, 1)
+		gl.ClearColor(0.2, 0.3, 0.3, 1.0)
 		// Clears the screen using the Clear Color
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
