@@ -134,10 +134,14 @@ main :: proc() {
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 
 	// could unbind the VAO but just am not doing it. To do it gl.BindVertexArray(0)
-	// gl.BindVertexArray(0)
+	gl.BindVertexArray(0)
 
 	// DO NOT UNBIND EBO while VAO is active
-	// gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
+	// Unbinding VAO while EBO is bound allow for that binding reference to
+	// stay with the VAO and keep being reused. It will be overwritten if
+	// something else is bound to gl.ELEMENT_ARRAY_BUFFER while the VAO is active
+	// as such only bind EBO is you want to affect the EBO of the currently bound VAO
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
 
 	fmt.println("[DEBUG] All VAO and VBO init and binding done")
 
@@ -168,7 +172,10 @@ main :: proc() {
 
 		// don't technically need to bind it every time since only one
 		gl.BindVertexArray(VAO)
-		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+
+		// Don't need to bind EBO here since VAO has EBO stored from earlier
+		// and has not been overwritten by another binding while active
+		//gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
 
 		// primitive type, starting index of vertex array, how many vertices
 		// Drawing using VBO + VAO
