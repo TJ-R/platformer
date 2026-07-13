@@ -91,15 +91,28 @@ main :: proc() {
 	shaderProgram, success = create_shader_program({vertexShader, fragmentShader})
 
 	/* ---------------- VERTEX DATA INIT ---------------- */
+	
+	// odinfmt: disable
+	vertices := [4][3]f32{
+		{0.5, 0.5, 0.0}, 
+		{0.5, -0.5, 0.0}, 
+		{-0.5, -0.5, 0.0}, 
+		{-0.5, 0.5, 0.0}
+	}
 
-	vertices := [9]f32{-0.5, -0.5, 0.0, 0.5, -0.5, 0.0, 0.0, 0.5, 0.0}
+	indices := [6]u32{
+		0, 1, 3, // First Triangle
+		1, 2, 3, // Second Triangle
+	}
+	// odinfmt: enable
 
 	// Defining Vertex Buffer Object
 	// Assigning the unique id to the VBO variable via GenBuffers function
 	// call
-	VBO, VAO: u32
+	VBO, VAO, EBO: u32
 	gl.GenVertexArrays(1, &VAO)
 	gl.GenBuffers(1, &VBO)
+	gl.GenBuffers(1, &EBO)
 
 	// 1. Bind VAO
 	gl.BindVertexArray(VAO)
@@ -108,15 +121,29 @@ main :: proc() {
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), raw_data(vertices[:]), gl.STATIC_DRAW)
 
+	// Same thing for an element buffer object (EBO)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(indices), raw_data(indices[:]), gl.STATIC_DRAW)
+
 	// 3. Set Vertext Attribute Pointer
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), uintptr(0))
 	gl.EnableVertexAttribArray(0)
 
 	// Unbinding from ARRAY_BUFFER can do this since VAO is already tracking
-	// the BO
+	// the VBO
 	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-	// could unbind the VAO but don't gl.BindVertexArray(0)
+
+	// could unbind the VAO but just am not doing it. To do it gl.BindVertexArray(0)
+	// gl.BindVertexArray(0)
+
+	// DO NOT UNBIND EBO while VAO is active
+	// gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, 0)
+
 	fmt.println("[DEBUG] All VAO and VBO init and binding done")
+
+
+	// Wireframe mode uncomment below
+	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	running := true
 	for running {
@@ -141,9 +168,16 @@ main :: proc() {
 
 		// don't technically need to bind it every time since only one
 		gl.BindVertexArray(VAO)
+		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
 
 		// primitive type, starting index of vertex array, how many vertices
-		gl.DrawArrays(gl.TRIANGLES, 0, 3)
+		// Drawing using VBO + VAO
+		// gl.DrawArrays(gl.TRIANGLES, 0, 3)
+
+		// Drawing using indices in EBO, Data in VBO and VAO
+		// unsigned int here is u32 I had uint so it wouldn't run
+		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+
 		// gl.BindVertexArray(0) // could unbind it every time
 
 		sdl.GL_SwapWindow(window)
