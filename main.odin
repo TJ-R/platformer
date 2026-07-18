@@ -67,6 +67,7 @@ main :: proc() {
 	/* ----------------- SHADER INIT ---------------- */
 	vertexShaderSource := #load("./shaders/shader.vert")
 	fragmentShaderSource := #load("./shaders/shader.frag")
+	yellowFragShaderSource := #load("./shaders/yellow.frag")
 
 	vertexShader, success, err_msg := compile_shader(vertexShaderSource, gl.VERTEX_SHADER)
 	if (success == i32(gl.FALSE)) {
@@ -83,12 +84,24 @@ main :: proc() {
 	}
 	fmt.println("[DEBUG] Fragment Shader Compilation Done")
 
+	yellowFragShader: u32
+	yellowFragShader, success, err_msg = compile_shader(yellowFragShaderSource, gl.FRAGMENT_SHADER)
+	if (success == i32(gl.FALSE)) {
+		fmt.eprintf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED %s\n", err_msg)
+		return
+	}
+	fmt.println("[DEBUG] Fragment Shader Compilation Done")
+
 	/* --------------- SHADER PROGRAM ------------------- */
 	// Need to linked the compiled shaders to a shader program
 	// Then activate the program for rendering so they are used
 	// to render our objects
 	shaderProgram: u32
 	shaderProgram, success = create_shader_program({vertexShader, fragmentShader})
+
+	yellowShaderProgram: u32
+	yellowShaderProgram, success = create_shader_program({vertexShader, yellowFragShader})
+
 
 	/* ---------------- VERTEX DATA INIT ---------------- */
 
@@ -202,6 +215,7 @@ main :: proc() {
 	fmt.println(VBO[1])
 	gl.BufferData(gl.ARRAY_BUFFER, size_of(verticesT2), raw_data(verticesT2[:]), gl.STATIC_DRAW)
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), uintptr(0))
+	// THIS ENABLES THE POINTER IN THE VAO the VAO itself doesn't need enabled
 	gl.EnableVertexAttribArray(0)
 
 	gl.GetVertexAttribiv(0, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &boundBuffer)
@@ -259,6 +273,7 @@ main :: proc() {
 		// Drawing using VBO + VAO
 		gl.DrawArrays(gl.TRIANGLES, 0, 3)
 
+		gl.UseProgram(yellowShaderProgram)
 		// Draw next VertexArray
 		gl.BindVertexArray(VAO[1])
 		gl.DrawArrays(gl.TRIANGLES, 0, 3)
