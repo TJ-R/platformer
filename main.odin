@@ -241,6 +241,8 @@ main :: proc() {
 	// Wireframe mode uncomment below
 	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
+	adder: f32 = 0.00001
+
 	running := true
 	for running {
 		event: sdl.Event
@@ -285,6 +287,23 @@ main :: proc() {
 		gl.BindVertexArray(0) // could unbind it every time
 
 		sdl.GL_SwapWindow(window)
+
+		// Attempting to see if I can stretch the top of the first triangle
+		// over multiple draw cycles. I believe I can't since I did not
+		// bind VAO first
+		if (verticesT1[0][1] <= 1) {
+			verticesT1[0][1] += adder
+		} else {
+			adder *= -1
+			verticesT1[0][1] += adder
+		}
+		gl.BindBuffer(gl.ARRAY_BUFFER, VBO[0])
+		gl.BufferData(
+			gl.ARRAY_BUFFER,
+			size_of(verticesT1),
+			raw_data(verticesT1[:]),
+			gl.STATIC_DRAW,
+		)
 
 	}
 
