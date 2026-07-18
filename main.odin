@@ -91,20 +91,60 @@ main :: proc() {
 	shaderProgram, success = create_shader_program({vertexShader, fragmentShader})
 
 	/* ---------------- VERTEX DATA INIT ---------------- */
+
+
 	
 	// odinfmt: disable
+	/*
 	vertices := [4][3]f32{
 		{0.5, 0.5, 0.0}, 
 		{0.5, -0.5, 0.0}, 
 		{-0.5, -0.5, 0.0}, 
 		{-0.5, 0.5, 0.0}
 	}
+	*/
 
+	/* Trapezoid but in array buffer VBO
+	vertices := [9][3]f32 {
+		{0.0, 0.5, 0.0},
+		{0.25, 0.0, 0.0},
+		{-0.25, 0.0, 0.0},
+		{0.5, 0.5, 0.0}, // Tip of rightmost triangle
+		{0.75, 0.0, 0.0}, // bottom right of triangle 2
+		{0.25, 0.0, 0.0}, // bottom left of triangle 2
+		{0.25, 0.0, 0.0}, // top of inverted triangle 3
+		{0.0, 0.5, 0.0},
+		{0.5, 0.5, 0.0}
+	}
+	*/
+
+
+	/* Trap Using EBO */
+	vertices := [5][3] f32{
+		{0.0, 0.5, 0.0},
+		{0.25, 0.0, 0.0},
+		{-0.25, 0.0, 0.0},
+		{0.5, 0.5, 0.0},
+		{0.75, 0.0, 0.0},
+	}
+
+	/* Two triangle */
+	/*
 	indices := [6]u32{
 		0, 1, 3, // First Triangle
 		1, 2, 3, // Second Triangle
 	}
+	*/
+	
+	/* Trapezoid Indices */
+	indices := [9]u32 {
+		0, 1, 2,
+		1, 3, 4,
+		0, 1, 3
+	}
+
 	// odinfmt: enable
+
 
 	// Defining Vertex Buffer Object
 	// Assigning the unique id to the VBO variable via GenBuffers function
@@ -147,7 +187,7 @@ main :: proc() {
 
 
 	// Wireframe mode uncomment below
-	// gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	running := true
 	for running {
@@ -175,11 +215,11 @@ main :: proc() {
 
 		// Don't need to bind EBO here since VAO has EBO stored from earlier
 		// and has not been overwritten by another binding while active
-		//gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
 
 		// primitive type, starting index of vertex array, how many vertices
 		// Drawing using VBO + VAO
-		// gl.DrawArrays(gl.TRIANGLES, 0, 3)
+		// gl.DrawArrays(gl.TRIANGLES, 0, 9)
 
 		// Drawing using indices in EBO, Data in VBO and VAO
 		// unsigned int here is u32 I had uint so it wouldn't run
