@@ -109,7 +109,7 @@ main :: proc() {
 		{0.0, 0.5, 0.0},
 		{0.25, 0.0, 0.0},
 		{-0.25, 0.0, 0.0},
-		{0.5, 0.5, 0.0}, // Tip of rightmost triangle
+		{0.5, 0.5, 0.0}, // Tip of rightmost triangle 2
 		{0.75, 0.0, 0.0}, // bottom right of triangle 2
 		{0.25, 0.0, 0.0}, // bottom left of triangle 2
 		{0.25, 0.0, 0.0}, // top of inverted triangle 3
@@ -118,6 +118,17 @@ main :: proc() {
 	}
 	*/
 
+	verticesT1 := [3][3]f32 {
+		{0.0, 0.5, 0.0},
+		{0.25, 0.0, 0.0},
+		{-0.25, 0.0, 0.0}
+	}
+	
+	verticesT2 := [3][3]f32 {
+		{0.5, 0.5, 0.0}, // Tip of rightmost triangle
+		{0.75, 0.0, 0.0}, // bottom right of triangle 2
+		{0.25, 0.0, 0.0}, // bottom left of triangle 2
+	}
 
 	/* Trap Using EBO */
 	vertices := [5][3] f32{
@@ -149,25 +160,52 @@ main :: proc() {
 	// Defining Vertex Buffer Object
 	// Assigning the unique id to the VBO variable via GenBuffers function
 	// call
-	VBO, VAO, EBO: u32
-	gl.GenVertexArrays(1, &VAO)
-	gl.GenBuffers(1, &VBO)
-	gl.GenBuffers(1, &EBO)
+	//VAO, VBO, EBO: u32
+	VAO, VBO, EBO: [2]u32 // multi-pointer
+
+	// Casting fixed array to temp slice then raw_data to make it a multi-ptr
+	gl.GenVertexArrays(2, raw_data(VAO[:]))
+	gl.GenBuffers(2, raw_data(VBO[:]))
+	gl.GenBuffers(2, raw_data(EBO[:]))
 
 	// 1. Bind VAO
-	gl.BindVertexArray(VAO)
+	gl.BindVertexArray(VAO[0])
 
 	// 2. Copy and Bind VBO
-	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
-	gl.BufferData(gl.ARRAY_BUFFER, size_of(vertices), raw_data(vertices[:]), gl.STATIC_DRAW)
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO[0])
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(verticesT1), raw_data(verticesT1[:]), gl.STATIC_DRAW)
 
 	// Same thing for an element buffer object (EBO)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+	// TODO if this flips its shit its because I tried to element draw with current
+	// set up where I'm using two separate buffers as an exercise
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO[0])
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(indices), raw_data(indices[:]), gl.STATIC_DRAW)
 
 	// 3. Set Vertext Attribute Pointer
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), uintptr(0))
 	gl.EnableVertexAttribArray(0)
+
+	boundBuffer: i32
+	gl.GetVertexAttribiv(0, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &boundBuffer)
+	fmt.printf("Bound to VAO0 buffer is: %d\n", boundBuffer)
+
+	/* Do the second triangle in the second VAO (doing two separate buffers) 
+		just because for learning purposes
+	*/
+	gl.BindVertexArray(VAO[1])
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO[1])
+
+	gl.GetIntegerv(gl.ARRAY_BUFFER_BINDING, &boundBuffer)
+	fmt.printf("Bound to Array buffer is: %d\n", boundBuffer)
+
+
+	fmt.println(VBO[1])
+	gl.BufferData(gl.ARRAY_BUFFER, size_of(verticesT2), raw_data(verticesT2[:]), gl.STATIC_DRAW)
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), uintptr(0))
+	gl.EnableVertexAttribArray(0)
+
+	gl.GetVertexAttribiv(0, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &boundBuffer)
+	fmt.printf("Bound to VAO1 buffer is: %d\n", boundBuffer)
 
 	// Unbinding from ARRAY_BUFFER can do this since VAO is already tracking
 	// the VBO
@@ -187,7 +225,7 @@ main :: proc() {
 
 
 	// Wireframe mode uncomment below
-	gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	running := true
 	for running {
@@ -211,29 +249,33 @@ main :: proc() {
 		gl.UseProgram(shaderProgram)
 
 		// don't technically need to bind it every time since only one
-		gl.BindVertexArray(VAO)
+		gl.BindVertexArray(VAO[0])
 
 		// Don't need to bind EBO here since VAO has EBO stored from earlier
 		// and has not been overwritten by another binding while active
-		gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+		// gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO[0])
 
 		// primitive type, starting index of vertex array, how many vertices
 		// Drawing using VBO + VAO
-		// gl.DrawArrays(gl.TRIANGLES, 0, 9)
+		gl.DrawArrays(gl.TRIANGLES, 0, 3)
+
+		// Draw next VertexArray
+		gl.BindVertexArray(VAO[1])
+		gl.DrawArrays(gl.TRIANGLES, 0, 3)
 
 		// Drawing using indices in EBO, Data in VBO and VAO
 		// unsigned int here is u32 I had uint so it wouldn't run
-		gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
+		// gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
 
-		// gl.BindVertexArray(0) // could unbind it every time
+		gl.BindVertexArray(0) // could unbind it every time
 
 		sdl.GL_SwapWindow(window)
 
 	}
 
 	// Clean up
-	gl.DeleteVertexArrays(1, &VAO)
-	gl.DeleteBuffers(1, &VBO)
+	gl.DeleteVertexArrays(2, raw_data(VAO[:]))
+	gl.DeleteBuffers(2, raw_data(VBO[:]))
 	gl.DeleteProgram(shaderProgram)
 
 	sdl.Quit()
