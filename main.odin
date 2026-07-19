@@ -60,9 +60,14 @@ main :: proc() {
 
 	sdl.GL_MakeCurrent(window, ctx)
 
+	// 16:9 aspect ratio
+	width, height: i32
+	width = 16 * 80
+	height = 9 * 80
+
 	// Have to load the proc address to call gl funcdtions
 	gl.load_up_to(3, 3, sdl.gl_set_proc_address)
-	gl.Viewport(0, 0, 1280, 720)
+	gl.Viewport(0, 0, width, height)
 
 	/* ----------------- SHADER INIT ---------------- */
 	vertexShaderSource := #load("./shaders/shader.vert")
@@ -120,8 +125,7 @@ main :: proc() {
 	/* Trapezoid but in array buffer VBO
 	vertices := [9][3]f32 {
 		{0.0, 0.5, 0.0},
-		{0.25, 0.0, 0.0},
-		{-0.25, 0.0, 0.0},
+		{0.25, 0.0, 0.0}, {-0.25, 0.0, 0.0},
 		{0.5, 0.5, 0.0}, // Tip of rightmost triangle 2
 		{0.75, 0.0, 0.0}, // bottom right of triangle 2
 		{0.25, 0.0, 0.0}, // bottom left of triangle 2
@@ -241,8 +245,6 @@ main :: proc() {
 	// Wireframe mode uncomment below
 	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
-	adder: f32 = 0.00001
-
 	running := true
 	for running {
 		event: sdl.Event
@@ -288,22 +290,27 @@ main :: proc() {
 
 		sdl.GL_SwapWindow(window)
 
-		// Attempting to see if I can stretch the top of the first triangle
-		// over multiple draw cycles. I believe I can't since I did not
-		// bind VAO first
-		if (verticesT1[0][1] <= 1) {
-			verticesT1[0][1] += adder
-		} else {
-			adder *= -1
-			verticesT1[0][1] += adder
+
+		mouseX, mouseY: f32
+		buttonState := sdl.GetGlobalMouseState(&mouseX, &mouseY)
+
+		normalizedX := normalize_global_coordinate(mouseX, 0, f32(width))
+
+		// Have to invert the Y
+		normalizedY := normalize_global_coordinate(mouseY, 0, f32(height)) * -1
+
+		fmt.printf("Normalized X: %f\n NormalizedY: %f\n", normalizedX, normalizedY)
+		leftPressed := sdl.MouseButtonFlags.LEFT in buttonState
+		fmt.printf("Left Mouse Btn Down: %t\n", leftPressed)
+
+		// Check if shape is "grabbed"
+		if (leftPressed) {
+			fmt.printf(
+				"Cursor inside: %t\n",
+				is_inside(Point2d{normalizedX, normalizedY}, verticesT1),
+			)
 		}
-		gl.BindBuffer(gl.ARRAY_BUFFER, VBO[0])
-		gl.BufferData(
-			gl.ARRAY_BUFFER,
-			size_of(verticesT1),
-			raw_data(verticesT1[:]),
-			gl.STATIC_DRAW,
-		)
+
 
 	}
 
@@ -343,6 +350,60 @@ compile_shader :: proc(src: []byte, shaderType: u32) -> (u32, i32, string) {
 	}
 
 	return shader, success, ""
+}
+
+normalize_global_coordinate :: proc(n, min, max: f32) -> f32 {
+	return 2 * ((n - min) / max - min) - 1
+}
+
+Point2d :: struct {
+	x: f32,
+	y: f32,
+}
+
+/*
+	Only doing triangles for now.
+	// TODO allow for any number for slices assume every vertex
+	// to vertex combo is a edge
+	// make an overload to accept indicies to target what the edges are 
+*/
+is_inside :: proc(p: Point2d, vertices: [3][3]f32) -> bool {
+	// Use the Ray Casting Algorithm with the vertice cordinates
+	// If element arrays will need to determine the individula triangle
+	// based on indices + verties. For just Array buffer drawing
+	// just the vertices will do
+	intersect := false
+
+	// How many pairs 6 / 2 = 3 because 1 extra per vertex
+	// (v1, v2), (v1, v3), (v2, v3) not sure how to loop through these cleanly
+	// so for now going to check each edge by hand
+	if (doesIntersect(p, {vertices[0], vertices[1]})) {
+		intersect = !intersect
+	}
+
+	if (doesIntersect(p, {vertices[0], vertices[2]})) {
+		intersect = !intersect
+	}
+
+	if (doesIntersect(p, {vertices[1], vertices[2]})) {
+		intersect = !intersect
+	}
+
+	return intersect
+}
+
+doesIntersect :: proc(p: Point2d, edge: [2][3]f32) -> bool {
+	// Can use linear interpolation formula (rearraged point-slope formula)
+	// to figure out were x-interp would be on the edge if y = yp
+	// then if xp < x-interp then xp ( this is due to raycasting to right)
+	// if we wanted to ray cast to left then xp > x-interp
+	// x < (x2 - x1) * (yp - y1) / (y2 - y1) + x1 << point-slope
+	return(
+		(edge[0][1] > p.y) != ((edge[1][1] > p.y)) &&
+		(p.x <
+				((edge[1][0] - edge[0][0]) * (p.y - edge[0][1]) / (edge[1][1] - edge[0][1]) +
+						edge[0][0])) \
+	)
 }
 
 create_shader_program :: proc(shaders: []u32) -> (u32, i32) {
