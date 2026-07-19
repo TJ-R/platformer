@@ -1,7 +1,65 @@
 package main
 import "core:fmt"
+import "core:os"
 import gl "vendor:OpenGL"
 
+Shader :: struct {
+	// Program ID
+	ID: u32,
+}
+
+
+// "Constructor"
+init_shader :: proc(shader: ^Shader, vertexPath, fragmentPath: string) {
+	vertexSrc, err := os.read_entire_file_from_path(vertexPath, context.allocator)
+	if err != nil {
+		fmt.printf("Error reading vertex shader.\n%d\n", err)
+		return
+	}
+
+	v_id, ok, err_msg := compile_shader(vertexSrc, gl.VERTEX_SHADER)
+	if (ok == i32(gl.FALSE)) {
+		fmt.eprintf("ERROR::SHADER::VERTEX::COMPILATION_FAILED %s\n", err_msg)
+		return
+	}
+	fmt.println("[DEBUG] Vertex Shader Compilation Done")
+
+
+	fragSrc: []byte
+	fragSrc, err = os.read_entire_file_from_path(fragmentPath, context.allocator)
+	if err != nil {
+		fmt.printf("Error reading vertex shader.\n%d\n", err)
+		return
+	}
+
+	f_id: u32
+	f_id, ok, err_msg = compile_shader(vertexSrc, gl.VERTEX_SHADER)
+	if (ok == i32(gl.FALSE)) {
+		fmt.eprintf("ERROR::SHADER::VERTEX::COMPILATION_FAILED %s\n", err_msg)
+		return
+	}
+	fmt.println("[DEBUG] Vertex Shader Compilation Done")
+
+	p_id: u32
+	p_id, ok = create_shader_program({v_id, f_id})
+	if (ok == i32(gl.FALSE)) {
+		fmt.eprintf("ERROR::SHADER::PROGRAM::CREATION_FAILED %s\n", err_msg)
+		return
+	}
+	fmt.println("[DEBUG] Shader Program Created")
+
+	shader.ID = p_id
+}
+
+/* Function to use the shader */
+use_shader :: proc(shader: ^Shader) {
+	gl.UseProgram(shader.ID)
+}
+
+/* Functions to set value for shader (uniform values) */
+shader_set_bool :: proc(shader: ^Shader, name: string, val: bool) {}
+shader_set_int :: proc(shader: ^Shader, name: string, val: bool) {}
+shader_set_float :: proc(shader: ^Shader, name: string, val: bool) {}
 
 compile_shader :: proc(src: []byte, shaderType: u32) -> (u32, i32, string) {
 	cstr: cstring = cstring(raw_data(src))
