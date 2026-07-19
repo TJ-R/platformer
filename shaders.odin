@@ -1,6 +1,7 @@
 package main
 import "core:fmt"
 import "core:os"
+import "core:strings"
 import gl "vendor:OpenGL"
 
 Shader :: struct {
@@ -57,9 +58,25 @@ use_shader :: proc(shader: ^Shader) {
 }
 
 /* Functions to set value for shader (uniform values) */
-shader_set_bool :: proc(shader: ^Shader, name: string, val: bool) {}
-shader_set_int :: proc(shader: ^Shader, name: string, val: bool) {}
-shader_set_float :: proc(shader: ^Shader, name: string, val: bool) {}
+shader_set_bool :: proc(shader: ^Shader, name: string, val: bool) {
+	uniformLoc := gl.GetUniformLocation(shader.ID, strings.clone_to_cstring(name))
+	gl.Uniform1i(uniformLoc, i32(val))
+}
+
+shader_set_int :: proc(shader: ^Shader, name: string, val: i32) {
+	uniformLoc := gl.GetUniformLocation(shader.ID, strings.clone_to_cstring(name))
+	gl.Uniform1i(uniformLoc, val)
+}
+
+shader_set_float :: proc(shader: ^Shader, name: string, val: f32) {
+	uniformLoc := gl.GetUniformLocation(shader.ID, strings.clone_to_cstring(name))
+	gl.Uniform1f(uniformLoc, val)
+}
+
+shader_set_vec4f :: proc(shader: ^Shader, name: string, a, b, c, d: f32) {
+	uniformLoc := gl.GetUniformLocation(shader.ID, strings.clone_to_cstring(name))
+	gl.Uniform4f(uniformLoc, a, b, c, d)
+}
 
 compile_shader :: proc(src: []byte, shaderType: u32) -> (u32, i32, string) {
 	cstr: cstring = cstring(raw_data(src))

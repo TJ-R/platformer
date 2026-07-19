@@ -76,7 +76,10 @@ main :: proc() {
 	init_shader(&shader, "./shaders/shader.vert", "./shaders/shader.frag")
 
 	yellow_shader: Shader
+	fmt.println("------------ BEFORE YELLOW --------------")
 	init_shader(&yellow_shader, "./shaders/shader.vert", "./shaders/yellow.frag")
+	fmt.println("------------ AFTER YELLOW --------------")
+
 	/* ---------------- VERTEX DATA INIT ---------------- */
 
 
@@ -256,6 +259,7 @@ main :: proc() {
 		gl.DrawArrays(gl.TRIANGLES, 0, 3)
 
 		use_shader(&yellow_shader)
+		shader_set_vec4f(&yellow_shader, "yellowColor", 0.7, 0.6, 0.2, 1.0)
 		// Draw next VertexArray
 		gl.BindVertexArray(VAO[1])
 		gl.DrawArrays(gl.TRIANGLES, 0, 3)
