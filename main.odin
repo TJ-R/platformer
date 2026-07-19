@@ -246,6 +246,7 @@ main :: proc() {
 	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
 
 	running := true
+	dragging := false
 	for running {
 		event: sdl.Event
 		for sdl.PollEvent(&event) {
@@ -309,9 +310,38 @@ main :: proc() {
 				"Cursor inside: %t\n",
 				is_inside(Point2d{normalizedX, normalizedY}, verticesT1),
 			)
+
+			if (is_inside(Point2d{normalizedX, normalizedY}, verticesT1)) {
+				dragging = true
+			}
+
+			// follow cursor
+			// put triangle in center of cursor
+			// calculate new vertices based on normalized mouse cords
+			if (dragging) {
+
+				
+							// odinfmt: disable
+				verticesT1 := [3][3]f32{
+					{0.0+normalizedX, 0.5+normalizedY, 0.0}, 
+					{0.25+normalizedX, 0.0+normalizedY, 0.0}, 
+					{-0.25+normalizedX, 0.0+normalizedY, 0.0}
+				}
+				// odinfmt: enable
+				gl.BindBuffer(gl.ARRAY_BUFFER, VBO[0])
+				gl.BufferData(
+					gl.ARRAY_BUFFER,
+					size_of(verticesT1),
+					raw_data(verticesT1[:]),
+					gl.DYNAMIC_DRAW,
+				)
+			}
+		} else {
+			dragging = false
+			// drop
 		}
 
-
+		gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 	}
 
 	// Clean up
@@ -377,22 +407,22 @@ is_inside :: proc(p: Point2d, vertices: [3][3]f32) -> bool {
 	// How many pairs 6 / 2 = 3 because 1 extra per vertex
 	// (v1, v2), (v1, v3), (v2, v3) not sure how to loop through these cleanly
 	// so for now going to check each edge by hand
-	if (doesIntersect(p, {vertices[0], vertices[1]})) {
+	if (does_intersect(p, {vertices[0], vertices[1]})) {
 		intersect = !intersect
 	}
 
-	if (doesIntersect(p, {vertices[0], vertices[2]})) {
+	if (does_intersect(p, {vertices[0], vertices[2]})) {
 		intersect = !intersect
 	}
 
-	if (doesIntersect(p, {vertices[1], vertices[2]})) {
+	if (does_intersect(p, {vertices[1], vertices[2]})) {
 		intersect = !intersect
 	}
 
 	return intersect
 }
 
-doesIntersect :: proc(p: Point2d, edge: [2][3]f32) -> bool {
+does_intersect :: proc(p: Point2d, edge: [2][3]f32) -> bool {
 	// Can use linear interpolation formula (rearraged point-slope formula)
 	// to figure out were x-interp would be on the edge if y = yp
 	// then if xp < x-interp then xp ( this is due to raycasting to right)
