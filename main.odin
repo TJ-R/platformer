@@ -322,7 +322,7 @@ main :: proc() {
 
 				
 							// odinfmt: disable
-				verticesT1 := [3][3]f32{
+				verticesT1 = [3][3]f32{
 					{0.0+normalizedX, 0.5+normalizedY, 0.0}, 
 					{0.25+normalizedX, 0.0+normalizedY, 0.0}, 
 					{-0.25+normalizedX, 0.0+normalizedY, 0.0}
@@ -351,117 +351,4 @@ main :: proc() {
 
 	sdl.Quit()
 	return
-}
-
-compile_shader :: proc(src: []byte, shaderType: u32) -> (u32, i32, string) {
-	cstr: cstring = cstring(raw_data(src))
-	shader := gl.CreateShader(shaderType)
-
-	// pass the shader, the number of strings in the array, array of pointers
-	// to strings (in my case it is just one string no array), array of all
-	// of the string lengths that the pointers are pointing to
-	// PROBABLY SHOULD CHANGE NIL TO LENGTH SINCE THIS PROCEDURE (FUNCTION)
-	// IS SUPPOSED TO HANDLE COMPILING ALL KINDS OF DIFFERENT SHADERS
-	gl.ShaderSource(shader, 1, &cstr, nil)
-	gl.CompileShader(shader)
-
-	success: i32
-	infoLog: [512]u8 // Remember char is just 8-bit unsigned int
-	logLength: i32
-
-	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &success)
-
-	// If shader failed taking a guess that 0 is false since success is i32
-	if (success == i32(gl.FALSE)) {
-		gl.GetShaderInfoLog(shader, 512, &logLength, raw_data(infoLog[:]))
-		// Find num bytes before terminal
-		err_msg := string(infoLog[:logLength])
-		return shader, success, err_msg
-	}
-
-	return shader, success, ""
-}
-
-normalize_global_coordinate :: proc(n, min, max: f32) -> f32 {
-	return 2 * ((n - min) / max - min) - 1
-}
-
-Point2d :: struct {
-	x: f32,
-	y: f32,
-}
-
-/*
-	Only doing triangles for now.
-	// TODO allow for any number for slices assume every vertex
-	// to vertex combo is a edge
-	// make an overload to accept indicies to target what the edges are 
-*/
-is_inside :: proc(p: Point2d, vertices: [3][3]f32) -> bool {
-	// Use the Ray Casting Algorithm with the vertice cordinates
-	// If element arrays will need to determine the individula triangle
-	// based on indices + verties. For just Array buffer drawing
-	// just the vertices will do
-	intersect := false
-
-	// How many pairs 6 / 2 = 3 because 1 extra per vertex
-	// (v1, v2), (v1, v3), (v2, v3) not sure how to loop through these cleanly
-	// so for now going to check each edge by hand
-	if (does_intersect(p, {vertices[0], vertices[1]})) {
-		intersect = !intersect
-	}
-
-	if (does_intersect(p, {vertices[0], vertices[2]})) {
-		intersect = !intersect
-	}
-
-	if (does_intersect(p, {vertices[1], vertices[2]})) {
-		intersect = !intersect
-	}
-
-	return intersect
-}
-
-does_intersect :: proc(p: Point2d, edge: [2][3]f32) -> bool {
-	// Can use linear interpolation formula (rearraged point-slope formula)
-	// to figure out were x-interp would be on the edge if y = yp
-	// then if xp < x-interp then xp ( this is due to raycasting to right)
-	// if we wanted to ray cast to left then xp > x-interp
-	// x < (x2 - x1) * (yp - y1) / (y2 - y1) + x1 << point-slope
-	return(
-		(edge[0][1] > p.y) != ((edge[1][1] > p.y)) &&
-		(p.x <
-				((edge[1][0] - edge[0][0]) * (p.y - edge[0][1]) / (edge[1][1] - edge[0][1]) +
-						edge[0][0])) \
-	)
-}
-
-create_shader_program :: proc(shaders: []u32) -> (u32, i32) {
-	shaderProgram := gl.CreateProgram()
-
-	for shader in shaders {
-		gl.AttachShader(shaderProgram, shader)
-	}
-
-	gl.LinkProgram(shaderProgram)
-
-	success: i32
-	infoLog: [512]u8 // Remember char is just 8-bit unsigned int
-	logLength: i32
-	gl.GetProgramiv(shaderProgram, gl.LINK_STATUS, &success)
-
-	if (success == i32(gl.FALSE)) {
-		gl.GetProgramInfoLog(shaderProgram, 512, &logLength, raw_data(infoLog[:]))
-
-		err_msg := string(infoLog[:logLength])
-		fmt.eprintf("ERROR::PROGRAM::SHADER::LINKING_FAILED %s\n", err_msg)
-		return shaderProgram, i32(gl.FALSE)
-	}
-	fmt.println("[DEBUG] Program Shader Linking Done")
-	// Don't need this objects any more since they are linked to the program
-	for shader in shaders {
-		gl.DeleteShader(shader)
-	}
-
-	return shaderProgram, i32(gl.TRUE)
 }
