@@ -1,6 +1,8 @@
 package main
 
 import "core:fmt"
+import "core:math"
+import "core:strings"
 import gl "vendor:OpenGL"
 import sdl "vendor:sdl3"
 
@@ -104,6 +106,7 @@ main :: proc() {
 	shaderProgram: u32
 	shaderProgram, success = create_shader_program({vertexShader, fragmentShader})
 
+
 	yellowShaderProgram: u32
 	yellowShaderProgram, success = create_shader_program({vertexShader, yellowFragShader})
 
@@ -135,10 +138,10 @@ main :: proc() {
 	}
 	*/
 
-	verticesT1 := [3][3]f32 {
-		{0.0, 0.5, 0.0},
-		{0.25, 0.0, 0.0},
-		{-0.25, 0.0, 0.0}
+	verticesT1 := [3][6]f32 {
+		{0.0, 0.5, 0.0, 1.0, 0.0, 0.0},
+		{0.25, 0.0, 0.0, 0.0, 1.0, 0.0},
+		{-0.25, 0.0, 0.0, 0.0, 0.0, 1.0}
 	}
 	
 	verticesT2 := [3][3]f32 {
@@ -265,7 +268,14 @@ main :: proc() {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		// 4. Draw step
+		timeValue := sdl.GetTicks() / 1000.0 // Time in seconds
+		greenValue := (math.sin(f32(timeValue)) / 2) + 0.5
+		vertexColorLoc := gl.GetUniformLocation(
+			shaderProgram,
+			strings.clone_to_cstring("appColor"),
+		)
 		gl.UseProgram(shaderProgram)
+		gl.Uniform4f(vertexColorLoc, 0.0, greenValue, 0.0, 1.0)
 
 		// don't technically need to bind it every time since only one
 		gl.BindVertexArray(VAO[0])
@@ -286,7 +296,6 @@ main :: proc() {
 		// Drawing using indices in EBO, Data in VBO and VAO
 		// unsigned int here is u32 I had uint so it wouldn't run
 		// gl.DrawElements(gl.TRIANGLES, 6, gl.UNSIGNED_INT, nil)
-
 		gl.BindVertexArray(0) // could unbind it every time
 
 		sdl.GL_SwapWindow(window)
@@ -304,42 +313,42 @@ main :: proc() {
 		leftPressed := sdl.MouseButtonFlags.LEFT in buttonState
 		fmt.printf("Left Mouse Btn Down: %t\n", leftPressed)
 
+		// BROKEN FOR NOW SINCE I WENT FROM [3][3] to [3][6]
+		// Need to make code more maliable
 		// Check if shape is "grabbed"
-		if (leftPressed) {
-			fmt.printf(
-				"Cursor inside: %t\n",
-				is_inside(Point2d{normalizedX, normalizedY}, verticesT1),
-			)
-
-			if (is_inside(Point2d{normalizedX, normalizedY}, verticesT1)) {
-				dragging = true
-			}
-
-			// follow cursor
-			// put triangle in center of cursor
-			// calculate new vertices based on normalized mouse cords
-			if (dragging) {
-
-				
-							// odinfmt: disable
-				verticesT1 = [3][3]f32{
-					{0.0+normalizedX, 0.5+normalizedY, 0.0}, 
-					{0.25+normalizedX, 0.0+normalizedY, 0.0}, 
-					{-0.25+normalizedX, 0.0+normalizedY, 0.0}
-				}
-				// odinfmt: enable
-				gl.BindBuffer(gl.ARRAY_BUFFER, VBO[0])
-				gl.BufferData(
-					gl.ARRAY_BUFFER,
-					size_of(verticesT1),
-					raw_data(verticesT1[:]),
-					gl.DYNAMIC_DRAW,
-				)
-			}
-		} else {
-			dragging = false
-			// drop
-		}
+		//		if (leftPressed) {
+		//			fmt.printf(
+		//				"Cursor inside: %t\n",
+		//				is_inside(Point2d{normalizedX, normalizedY}, verticesT1),
+		//			)
+		//
+		//			if (is_inside(Point2d{normalizedX, normalizedY}, verticesT1)) {
+		//				dragging = true
+		//			}
+		//
+		//			// follow cursor
+		//			// put triangle in center of cursor
+		//			// calculate new vertices based on normalized mouse cords
+		//			if (dragging) {
+		//							// odinfmt: disable
+		//				verticesT1 = [3][3]f32{
+		//					{0.0+normalizedX, 0.5+normalizedY, 0.0},
+		//					{0.25+normalizedX, 0.0+normalizedY, 0.0},
+		//					{-0.25+normalizedX, 0.0+normalizedY, 0.0}
+		//				}
+		//				// odinfmt: enable
+		//				gl.BindBuffer(gl.ARRAY_BUFFER, VBO[0])
+		//				gl.BufferData(
+		//					gl.ARRAY_BUFFER,
+		//					size_of(verticesT1),
+		//					raw_data(verticesT1[:]),
+		//					gl.DYNAMIC_DRAW,
+		//				)
+		//			}
+		//		} else {
+		//			dragging = false
+		//			// drop
+		//		}
 
 		gl.BindBuffer(gl.ARRAY_BUFFER, 0)
 	}
