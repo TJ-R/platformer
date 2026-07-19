@@ -72,45 +72,11 @@ main :: proc() {
 	gl.Viewport(0, 0, width, height)
 
 	/* ----------------- SHADER INIT ---------------- */
-	vertexShaderSource := #load("./shaders/shader.vert")
-	fragmentShaderSource := #load("./shaders/shader.frag")
-	yellowFragShaderSource := #load("./shaders/yellow.frag")
+	shader: Shader
+	init_shader(&shader, "./shaders/shader.vert", "./shaders/shader.frag")
 
-	vertexShader, success, err_msg := compile_shader(vertexShaderSource, gl.VERTEX_SHADER)
-	if (success == i32(gl.FALSE)) {
-		fmt.eprintf("ERROR::SHADER::VERTEX::COMPILATION_FAILED %s\n", err_msg)
-		return
-	}
-	fmt.println("[DEBUG] Vertex Shader Compilation Done")
-
-	fragmentShader: u32 // declaring framentShader
-	fragmentShader, success, err_msg = compile_shader(fragmentShaderSource, gl.FRAGMENT_SHADER)
-	if (success == i32(gl.FALSE)) {
-		fmt.eprintf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED %s\n", err_msg)
-		return
-	}
-	fmt.println("[DEBUG] Fragment Shader Compilation Done")
-
-	yellowFragShader: u32
-	yellowFragShader, success, err_msg = compile_shader(yellowFragShaderSource, gl.FRAGMENT_SHADER)
-	if (success == i32(gl.FALSE)) {
-		fmt.eprintf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED %s\n", err_msg)
-		return
-	}
-	fmt.println("[DEBUG] Fragment Shader Compilation Done")
-
-	/* --------------- SHADER PROGRAM ------------------- */
-	// Need to linked the compiled shaders to a shader program
-	// Then activate the program for rendering so they are used
-	// to render our objects
-	shaderProgram: u32
-	shaderProgram, success = create_shader_program({vertexShader, fragmentShader})
-
-
-	yellowShaderProgram: u32
-	yellowShaderProgram, success = create_shader_program({vertexShader, yellowFragShader})
-
-
+	yellow_shader: Shader
+	init_shader(&yellow_shader, "./shaders/shader.vert", "./shaders/yellow.frag")
 	/* ---------------- VERTEX DATA INIT ---------------- */
 
 
@@ -273,11 +239,9 @@ main :: proc() {
 		/*  This is just some code to pass a calculated color into frag shader */
 		timeValue := sdl.GetTicks() / 1000.0 // Time in seconds
 		greenValue := (math.sin(f32(timeValue)) / 2) + 0.5
-		vertexColorLoc := gl.GetUniformLocation(
-			shaderProgram,
-			strings.clone_to_cstring("uniColor"),
-		)
-		gl.UseProgram(shaderProgram)
+		vertexColorLoc := gl.GetUniformLocation(shader.ID, strings.clone_to_cstring("uniColor"))
+
+		use_shader(&shader)
 		// gl.Uniform4f(vertexColorLoc, 0.0, greenValue, 0.0, 1.0)
 
 		// don't technically need to bind it every time since only one
@@ -291,7 +255,7 @@ main :: proc() {
 		// Drawing using VBO + VAO
 		gl.DrawArrays(gl.TRIANGLES, 0, 3)
 
-		gl.UseProgram(yellowShaderProgram)
+		use_shader(&yellow_shader)
 		// Draw next VertexArray
 		gl.BindVertexArray(VAO[1])
 		gl.DrawArrays(gl.TRIANGLES, 0, 3)
@@ -303,17 +267,16 @@ main :: proc() {
 
 		sdl.GL_SwapWindow(window)
 
-		mouseX, mouseY: f32
-		buttonState := sdl.GetGlobalMouseState(&mouseX, &mouseY)
 
-		normalizedX := normalize_global_coordinate(mouseX, 0, f32(width))
-
-		// Have to invert the Y
-		normalizedY := normalize_global_coordinate(mouseY, 0, f32(height)) * -1
-
-		fmt.printf("Normalized X: %f\n NormalizedY: %f\n", normalizedX, normalizedY)
-		leftPressed := sdl.MouseButtonFlags.LEFT in buttonState
-		fmt.printf("Left Mouse Btn Down: %t\n", leftPressed)
+		/* Mouse Tracking */
+		//		mouseX, mouseY: f32
+		//		buttonState := sdl.GetGlobalMouseState(&mouseX, &mouseY)
+		//		normalizedX := normalize_global_coordinate(mouseX, 0, f32(width))
+		//		// Have to invert the Y
+		//		normalizedY := normalize_global_coordinate(mouseY, 0, f32(height)) * -1
+		//		fmt.printf("Normalized X: %f\n NormalizedY: %f\n", normalizedX, normalizedY)
+		//		leftPressed := sdl.MouseButtonFlags.LEFT in buttonState
+		//		fmt.printf("Left Mouse Btn Down: %t\n", leftPressed)
 
 		// BROKEN FOR NOW SINCE I WENT FROM [3][3] to [3][6]
 		// Need to make code more maliable
@@ -358,7 +321,8 @@ main :: proc() {
 	// Clean up
 	gl.DeleteVertexArrays(2, raw_data(VAO[:]))
 	gl.DeleteBuffers(2, raw_data(VBO[:]))
-	gl.DeleteProgram(shaderProgram)
+	gl.DeleteProgram(shader.ID)
+	gl.DeleteProgram(yellow_shader.ID)
 
 	sdl.Quit()
 	return

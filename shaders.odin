@@ -33,12 +33,12 @@ init_shader :: proc(shader: ^Shader, vertexPath, fragmentPath: string) {
 	}
 
 	f_id: u32
-	f_id, ok, err_msg = compile_shader(vertexSrc, gl.VERTEX_SHADER)
+	f_id, ok, err_msg = compile_shader(fragSrc, gl.FRAGMENT_SHADER)
 	if (ok == i32(gl.FALSE)) {
-		fmt.eprintf("ERROR::SHADER::VERTEX::COMPILATION_FAILED %s\n", err_msg)
+		fmt.eprintf("ERROR::SHADER::FRAGMENT::COMPILATION_FAILED %s\n", err_msg)
 		return
 	}
-	fmt.println("[DEBUG] Vertex Shader Compilation Done")
+	fmt.println("[DEBUG] Fragment Shader Compilation Done")
 
 	p_id: u32
 	p_id, ok = create_shader_program({v_id, f_id})
