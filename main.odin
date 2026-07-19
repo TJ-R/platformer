@@ -202,8 +202,10 @@ main :: proc() {
 	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, size_of(indices), raw_data(indices[:]), gl.STATIC_DRAW)
 
 	// 3. Set Vertext Attribute Pointer
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 3 * size_of(f32), uintptr(0))
+	gl.VertexAttribPointer(0, 3, gl.FLOAT, gl.FALSE, 6 * size_of(f32), uintptr(0))
+	gl.VertexAttribPointer(1, 3, gl.FLOAT, gl.FALSE, 6 * size_of(f32), 3 * size_of(f32))
 	gl.EnableVertexAttribArray(0)
+	gl.EnableVertexAttribArray(1)
 
 	boundBuffer: i32
 	gl.GetVertexAttribiv(0, gl.VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &boundBuffer)
@@ -268,14 +270,15 @@ main :: proc() {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		// 4. Draw step
+		/*  This is just some code to pass a calculated color into frag shader */
 		timeValue := sdl.GetTicks() / 1000.0 // Time in seconds
 		greenValue := (math.sin(f32(timeValue)) / 2) + 0.5
 		vertexColorLoc := gl.GetUniformLocation(
 			shaderProgram,
-			strings.clone_to_cstring("appColor"),
+			strings.clone_to_cstring("uniColor"),
 		)
 		gl.UseProgram(shaderProgram)
-		gl.Uniform4f(vertexColorLoc, 0.0, greenValue, 0.0, 1.0)
+		// gl.Uniform4f(vertexColorLoc, 0.0, greenValue, 0.0, 1.0)
 
 		// don't technically need to bind it every time since only one
 		gl.BindVertexArray(VAO[0])
@@ -299,7 +302,6 @@ main :: proc() {
 		gl.BindVertexArray(0) // could unbind it every time
 
 		sdl.GL_SwapWindow(window)
-
 
 		mouseX, mouseY: f32
 		buttonState := sdl.GetGlobalMouseState(&mouseX, &mouseY)
